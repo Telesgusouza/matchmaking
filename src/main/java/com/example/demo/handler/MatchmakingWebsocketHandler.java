@@ -1,7 +1,6 @@
 package com.example.demo.handler;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -54,8 +53,6 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 		}
 	}
 
-
-
 //	private UUID getUserIdFromSession(WebSocketSession session) {
 //	    // Aqui você precisa implementar a lógica para obter o ID do usuário
 //	    // Por exemplo, se o ID estiver na URL da conexão:
@@ -100,8 +97,8 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 			executorService.shutdown();
 
 		} else if (payload.startsWith("connect")) {
-            handleConnectMessage(payload, session);
-        }
+			handleConnectMessage(payload, session);
+		}
 
 	}
 
@@ -120,7 +117,11 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 
 			System.out.println("==================== handle Match Found =====================");
 			System.out.println(payload);
-			System.out.println(payload.length() >= 12);
+			
+			UUID idPlayer = getUserIdFromSession(session);
+			
+			System.out.println(matchmakingService.findOpponent(idPlayer));
+			System.out.println(idPlayer);
 
 			if (payload.length() >= 12) {
 
@@ -156,26 +157,25 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 		// autenticação
 		return (UUID) session.getAttributes().get("USER_ID"); // Substitua por sua própria lógica
 	}
-	
+
 	///////
-	 private void handleConnectMessage(String payload, WebSocketSession session) {
-		 
-		 	System.out.println("================= conectar ==================");
-		 	System.out.println(payload);
-		 
-		 
-	        try {
-	            String[] parts = payload.split(":");
-	            if (parts.length == 2 && parts[0].equals("connect")) {
-	                UUID userId = UUID.fromString(parts[1]);
-	                session.getAttributes().put("USER_ID", userId);
-	                System.out.println("Usuário conectado: " + userId);
-	            } else {
-	                System.err.println("Mensagem de conexão inválida: " + payload);
-	            }
-	        } catch (IllegalArgumentException e) {
-	            System.err.println("Erro ao processar mensagem de conexão: " + e.getMessage());
-	        }
-	    }
+	private void handleConnectMessage(String payload, WebSocketSession session) {
+
+		System.out.println("================= conectar ==================");
+		System.out.println(payload);
+
+		try {
+			String[] parts = payload.split(":");
+			if (parts.length == 2 && parts[0].equals("connect")) {
+				UUID userId = UUID.fromString(parts[1]);
+				session.getAttributes().put("USER_ID", userId);
+				System.out.println("Usuário conectado: " + userId);
+			} else {
+				System.err.println("Mensagem de conexão inválida: " + payload);
+			}
+		} catch (IllegalArgumentException e) {
+			System.err.println("Erro ao processar mensagem de conexão: " + e.getMessage());
+		}
+	}
 
 }

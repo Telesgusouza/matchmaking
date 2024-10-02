@@ -1,24 +1,58 @@
 package com.example.demo.service;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+
+import com.example.demo.entity.User;
+import com.example.demo.enums.UserRole;
+import com.example.demo.repository.UserRepository;
 
 @Service
 public class MatchmakingService {
 
 	private Map<UUID, WebSocketSession> waitingPlayers = new ConcurrentHashMap<>();
 	private Map<UUID, Match> activeMatches = new ConcurrentHashMap<>();
+	
+	@Autowired
+	private UserRepository userRepository;
 
 	public void addPlayerToQueue(UUID playerId, WebSocketSession session) {
 		waitingPlayers.put(playerId, session);
 		checkForMatch();
 	}
+	
+	///////////////////////////////////
+	
+	public UUID findOpponent(UUID playerId) {
+
+		
+		User anotherUser = this.userRepository.findByRoleAndIdNot(UserRole.LOOKING_FOR_MATCH, playerId);
+		if (anotherUser != null) {
+			return anotherUser.getId();
+		} 
+		
+	    return null;
+	}
+
+	public WebSocketSession getSessionByUserId(UUID userId) {
+	    // Implemente a lógica para encontrar a sessão WebSocket associada ao ID do usuário
+	    // Esta implementação depende de como você está gerenciando as sessões
+	    // Aqui está um exemplo simples:
+	    Map<UUID, WebSocketSession> sessions = new HashMap<>();
+	    return sessions.get(userId);
+	}
+	
+	///////////////////////////////////
+	
 
 	private void checkForMatch() {
 		if (waitingPlayers.size() >= 2) {
