@@ -40,7 +40,6 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 
 	private UUID idUser;
 
-	@SuppressWarnings("unused")
 	@Override
 	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
 		super.afterConnectionEstablished(session);
@@ -104,6 +103,11 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 		System.out.println("[afterConnectionClosed] session id " + session.getId());
 
 		super.afterConnectionClosed(session, status);
+
+		UUID idUser = getUserIdFromSession(session);
+
+		matchmakingService.removePlayersFromQueue(idUser);
+
 		session.close();
 	}
 

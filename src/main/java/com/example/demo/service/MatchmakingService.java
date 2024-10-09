@@ -43,6 +43,19 @@ public class MatchmakingService {
 	public void addPlayerToQueue(UUID playerId, WebSocketSession session) {
 		waitingPlayers.put(playerId, session);
 		checkForMatch();
+		
+		System.out.println();
+		System.out.println();
+		
+		System.out.println("======================================");
+		System.out.println("======================================");
+		
+		System.out.println("Add player");
+		System.out.println(waitingPlayers);
+		System.out.println(activeMatches);
+		
+		System.out.println();
+		System.out.println();
 	}
 
 	public UUID findOpponent(UUID playerId) {
@@ -73,8 +86,12 @@ public class MatchmakingService {
 			System.out.println("==================== CREATE MATCH ======================");
 			System.out.println("========================================================");
 
-			System.out.println(apiConsumerService.searchUserPhotoInApi(idPlayerOne));
-			System.out.println(apiConsumerService.searchUserPhotoInApi(idPlayerTwo));
+			System.out.println("player + " + idPLayer);
+			System.out.println("another + " + idAnotherPlayer);
+			
+			System.out.println();
+			System.out.println();
+			
 
 			Match newMatch = new Match(null, LocalDateTime.now(),
 
@@ -88,12 +105,22 @@ public class MatchmakingService {
 					0, 0, 0, 0);
 
 			updateStatusUsers(idPlayerOne, idPlayerTwo);
+			
+			System.out.println();
+			System.out.println();
 
 			System.out.println(newMatch);
 
 			Match saveMatch = this.matchRepository.save(newMatch);
 
+			System.out.println(saveMatch);
+			
 			try {
+				
+				System.out.println("=================================");
+				System.out.println(waitingPlayers);
+				
+				
 				WebSocketSession sessionOne = waitingPlayers.get(idPlayerOne);
 				WebSocketSession sessionTwo = waitingPlayers.get(idPlayerTwo);
 
@@ -105,14 +132,14 @@ public class MatchmakingService {
 				System.out.println(sessionOne);
 				System.out.println(sessionTwo);
 
-				System.out.println("ELE TAMBÉM CHEGOU AQUI?");
+				System.out.println("ELE TAMBÉM CHEGOU AQUI blz");
 
 				if (sessionOne != null && sessionTwo != null) {
 
 					System.out.println("ELE TAMBÉM CHEGOU AQUI?");
 
-					sessionOne.sendMessage(new TextMessage("Match found!"));
-					sessionTwo.sendMessage(new TextMessage("Match found!"));
+					sessionOne.sendMessage(new TextMessage("Match found!: " + newMatch));
+					sessionTwo.sendMessage(new TextMessage("Match found!: " + newMatch));
 				} else {
 					// Log ou trata o caso em que uma das sessões não foi encontrada
 					System.out.println("WebSocket session not found for one of the players");
@@ -171,7 +198,7 @@ public class MatchmakingService {
 
 				notifyPlayersAboutMatch(player1Id, player2Id, match);
 
-				removePlayersFromQueue(player1Id, player2Id);
+//				removePlayersFromQueue(player1Id, player2Id);
 
 				activeMatches.put(UUID.fromString(match.getId()), match);
 
@@ -179,7 +206,7 @@ public class MatchmakingService {
 		}
 	}
 
-	private void removePlayersFromQueue(UUID... playerIds) {
+	public void removePlayersFromQueue(UUID... playerIds) {
 		for (UUID playerId : playerIds) {
 			waitingPlayers.remove(playerId);
 		}
