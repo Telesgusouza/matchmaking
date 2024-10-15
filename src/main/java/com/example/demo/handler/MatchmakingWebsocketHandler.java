@@ -72,6 +72,15 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 
 		if (payload.startsWith("match_found")) {
 
+			System.out.println();
+			System.out.println();
+
+			System.out.println("====================================");
+			System.out.println("aqui esta tudo bem  :|");
+
+			System.out.println();
+			System.out.println();
+
 			handleMatchFound(payload, session);
 
 		} else if ("pong".equals(payload)) {
@@ -116,7 +125,31 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 
 			UUID idPlayer = getUserIdFromSession(session);
 
-			matchmakingService.createMatch(idPlayer, matchmakingService.findOpponent(idPlayer));
+			UUID anotherUser = matchmakingService.findOpponent(idPlayer);
+
+			if (anotherUser == null) {
+				ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+				executor.schedule(() -> {
+					try {
+
+						System.out.println();
+						System.out.println();
+
+						System.out.println("====================================");
+						System.out.println("passou por aqui");
+
+						System.out.println();
+						System.out.println();
+
+						handleMatchFound(payload, session);
+
+					} catch (RuntimeException e) {
+						System.err.println("Erro ao enviar ping: " + e.getMessage());
+					}
+				}, 5, TimeUnit.SECONDS);
+			}
+
+			matchmakingService.createMatch(idPlayer, anotherUser);
 
 //			if (payload.length() >= 12) {
 //				
