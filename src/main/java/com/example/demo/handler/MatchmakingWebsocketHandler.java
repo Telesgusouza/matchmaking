@@ -17,12 +17,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.example.demo.config.TokenService;
-import com.example.demo.entity.User;
-import com.example.demo.enums.UserRole;
 import com.example.demo.service.MatchmakingService;
 import com.example.demo.service.UserService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
@@ -33,13 +29,6 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 	@Autowired
 	private UserService useService;
 
-	@Autowired
-	private TokenService tokenService;
-
-	private ObjectMapper mapper = new ObjectMapper();
-
-	private UUID idUser;
-
 	@Override
 	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
 		super.afterConnectionEstablished(session);
@@ -49,46 +38,29 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 
 		if (userId == null) {
 			System.err.println("Erro: ID de usuário não encontrado na sessão");
+			messageWebsockets("Erro: ID de usuário não encontrado na sessão", session);
+
 			return;
-		} else {
-			idUser = userId;
 		}
 
-		User user = useService.findById(userId);
+//		User user = useService.findById(userId);
+		this.useService.lookingForMatch(userId);
 
-		if (user != null && user.getRole() == UserRole.LOOKING_FOR_MATCH) {
-
-			matchmakingService.addPlayerToQueue(userId, session);
-		} else {
-			System.err.println("Erro: Usuário não encontrado ou não está procurando por partida");
-		}
+		matchmakingService.addPlayerToQueue(userId, session);
 	}
 
 	@Override
 	public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {
-//		System.out.println("[handleMessage] session id " + message.getPayload());
+		System.out.println("[handleMessage] session id " + message.getPayload());
 
 		String payload = (String) message.getPayload();
 
-		if (payload.startsWith("match_found")) {
-
-			System.out.println();
-			System.out.println();
-
-			System.out.println("====================================");
-			System.out.println("aqui esta tudo bem  :|");
-
-			System.out.println();
-			System.out.println();
-
-			handleMatchFound(payload, session);
-
-		} else if ("pong".equals(payload)) {
+		if ("pong".equals(payload)) {
 			ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
 			Runnable task = () -> {
 				try {
-					session.sendMessage(new TextMessage("ping"));
+					messageWebsockets("ping", session);
 				} catch (Exception e) {
 					throw new RuntimeException("Erro ao enviar mensagem > ", e);
 				}
@@ -99,11 +71,6 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 			executorService.shutdown();
 
 		}
-
-//		DEIXOU DE EXISTIR POR ENQUANTO
-//		else if (payload.startsWith("connect")) {
-//			handleConnectMessage(payload, session);
-//		}
 
 	}
 
@@ -120,94 +87,20 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 		session.close();
 	}
 
-	private void handleMatchFound(String payload, WebSocketSession session) {
-		try {
-
-			UUID idPlayer = getUserIdFromSession(session);
-
-			UUID anotherUser = matchmakingService.findOpponent(idPlayer);
-
-			if (anotherUser == null) {
-				ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-				executor.schedule(() -> {
-					try {
-
-						System.out.println();
-						System.out.println();
-
-						System.out.println("====================================");
-						System.out.println("passou por aqui");
-
-						System.out.println();
-						System.out.println();
-
-						handleMatchFound(payload, session);
-
-					} catch (RuntimeException e) {
-						System.err.println("Erro ao enviar ping: " + e.getMessage());
-					}
-				}, 5, TimeUnit.SECONDS);
-			}
-
-			matchmakingService.createMatch(idPlayer, anotherUser);
-
-//			if (payload.length() >= 12) {
-//				
-//				Match
-////
-////				MatchmakingService.Match match = new Gson().fromJson(payload.substring(12),
-////						MatchmakingService.Match.class);
-//
-//				System.out.println("Partida encontrada: " + match.toJson());
-//
-//				// Aqui você pode enviar mais informações sobre a partida para o cliente
-//				session.sendMessage(new TextMessage("match_started:" + match.toJson()));
-//
-//			}
-
-		} catch (RuntimeException e) {
-			System.err.println("Erro ao tratar mensagem de partida encontrada: " + e.getMessage());
-		}
-	}
-
-	private void sendPing(WebSocketSession session) {
-		ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-		executor.schedule(() -> {
-			try {
-				session.sendMessage(new TextMessage("ping"));
-			} catch (IOException e) {
-				System.err.println("Erro ao enviar ping: " + e.getMessage());
-			}
-		}, 5, TimeUnit.SECONDS);
-	}
-
 	private UUID getUserIdFromSession(WebSocketSession session) {
 
 		Optional<String> uriIdUser = Optional.ofNullable(session.getUri()).map(UriComponentsBuilder::fromUri)
 				.map(UriComponentsBuilder::build).map(UriComponents::getQueryParams).map(it -> it.get("id_user"))
 				.flatMap(it -> it.stream().findFirst()).map(String::trim);
 
-//		return (UUID) session.getAttributes().get("USER_ID"); // Substitua por sua própria lógica
 		return UUID.fromString(uriIdUser.orElseThrow().toString());
 	}
 
-	///////
-	private void handleConnectMessage(String payload, WebSocketSession session) {
-
+	private void messageWebsockets(String message, WebSocketSession session) {
 		try {
-			String[] parts = payload.split(":");
-
-			if (parts.length == 2 && parts[0].equals("connect")) {
-
-				UUID userId = UUID.fromString(parts[1]);
-				session.getAttributes().put("USER_ID", userId);
-
-			} else {
-				System.err.println("Mensagem de conexão inválida: " + payload);
-			}
-		} catch (IllegalArgumentException e) {
-			System.err.println("Erro ao processar mensagem de conexão: " + e.getMessage());
+			session.sendMessage(new TextMessage(message));
+		} catch (IOException e) {
+			new RuntimeException("Error ao enviar mensagem: " + e);
 		}
 	}
-
 }

@@ -2,10 +2,8 @@ package com.example.demo.service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -14,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.example.demo.dtos.MatchDTO;
 import com.example.demo.dtos.RequestPhotoS3AwsDTO;
 import com.example.demo.entity.Match;
 import com.example.demo.entity.User;
@@ -70,25 +67,25 @@ public class MatchmakingService {
 
 							0, 0, 0, 0);
 
-					// descomentar depois
-//					updateStatusUsers(playerOneId, playerTwoId);
+					updateStatusUsers(playerOneId, playerTwoId);
 
 					Match saveMatch = this.matchRepository.save(newMatch);
 
-					try {
-						WebSocketSession sessionOne = waitingPlayers.get(playerOneId);
-						WebSocketSession sessionTwo = waitingPlayers.get(playerTwoId);
+					WebSocketSession sessionOne = waitingPlayers.get(playerOneId);
+					WebSocketSession sessionTwo = waitingPlayers.get(playerTwoId);
 
-						if (sessionOne != null && sessionTwo != null) {
+					if (sessionOne != null && sessionTwo != null) {
 
-							sessionOne.sendMessage(new TextMessage("Match found!: " + newMatch.getId()));
-							sessionTwo.sendMessage(new TextMessage("Match found!: " + newMatch.getId()));
-						} else {
-							// Log ou trata o caso em que uma das sessões não foi encontrada
-							System.out.println("WebSocket session not found for one of the players");
-						}
-					} catch (IOException e) {
-						System.out.println("Error sending match found message: " + e);
+						handleMessage("Match found!: " + newMatch.getId(), sessionOne);
+						handleMessage("Match found!: " + newMatch.getId(), sessionTwo);
+
+					} else {
+
+						// Log ou trata o caso em que uma das sessões não foi encontrada
+						System.out.println("WebSocket session not found for one of the players");
+						handleMessage("WebSocket session not found for one of the players", sessionOne);
+						handleMessage("WebSocket session not found for one of the players", sessionTwo);
+
 					}
 
 					removePlayersFromQueue(playerOneId, playerTwoId);
@@ -104,61 +101,6 @@ public class MatchmakingService {
 		}
 	}
 
-	public void createMatch(UUID idPLayer, UUID idAnotherPlayer) {
-
-		// definindo quem é o player um e dois
-		UUID idPlayerOne;
-		UUID idPlayerTwo;
-
-		Integer random = new Random().nextInt(2) + 1;
-		idPlayerOne = random == 1 ? idPLayer : idAnotherPlayer;
-		idPlayerTwo = random == 1 ? idAnotherPlayer : idPLayer;
-
-		// pegando a foto de ambos
-		try {
-
-			Match newMatch = new Match(null, LocalDateTime.now(),
-
-					idPlayerOne, idPlayerTwo,
-
-					mapper.readValue(apiConsumerService.searchUserPhotoInApi(idPlayerOne), RequestPhotoS3AwsDTO.class)
-							.photo(),
-					mapper.readValue(apiConsumerService.searchUserPhotoInApi(idPlayerTwo), RequestPhotoS3AwsDTO.class)
-							.photo(),
-
-					0, 0, 0, 0);
-
-			updateStatusUsers(idPlayerOne, idPlayerTwo);
-
-			Match saveMatch = this.matchRepository.save(newMatch);
-
-			try {
-				WebSocketSession sessionOne = waitingPlayers.get(idPlayerOne);
-				WebSocketSession sessionTwo = waitingPlayers.get(idPlayerTwo);
-
-				if (sessionOne != null && sessionTwo != null) {
-
-					System.out.println("ELE TAMBÉM CHEGOU AQUI?");
-
-					sessionOne.sendMessage(new TextMessage("Match found!: " + newMatch.getId()));
-					sessionTwo.sendMessage(new TextMessage("Match found!: " + newMatch.getId()));
-				} else {
-					// Log ou trata o caso em que uma das sessões não foi encontrada
-					System.out.println("WebSocket session not found for one of the players");
-				}
-			} catch (IOException e) {
-				System.out.println("Error sending match found message: " + e);
-			}
-
-			removePlayersFromQueue(idPlayerOne, idPlayerTwo);
-
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-	}
-
 	public UUID findOpponent(UUID playerId) {
 
 		User anotherUser = this.userRepository.findByRoleAndIdNot(UserRole.LOOKING_FOR_MATCH, playerId);
@@ -167,15 +109,6 @@ public class MatchmakingService {
 		}
 
 		return null;
-	}
-
-	public WebSocketSession getSessionByUserId(UUID userId) {
-		// Implemente a lógica para encontrar a sessão WebSocket associada ao ID do
-		// usuário
-		// Esta implementação depende de como você está gerenciando as sessões
-		// Aqui está um exemplo simples:
-		Map<UUID, WebSocketSession> sessions = new HashMap<>();
-		return sessions.get(userId);
 	}
 
 	private void updateStatusUsers(UUID... playerIds) {
@@ -197,36 +130,21 @@ public class MatchmakingService {
 		}
 	}
 
-	private void notifyPlayersAboutMatch(UUID player1Id, UUID player2Id, MatchDTO match) {
-		try {
-
-			WebSocketSession session1 = waitingPlayers.get(player1Id);
-			WebSocketSession session2 = waitingPlayers.get(player2Id);
-
-			if (session1 != null && session1.isOpen()) {
-				System.out.println("Total de jogadores na fila: " + waitingPlayers.size());
-				session1.sendMessage(new TextMessage("match:" + match.toJson()));
-			} else {
-				System.out.println("Jogador 1 não tem sessão ativa");
-			}
-
-			if (session2 != null && session2.isOpen()) {
-				session2.sendMessage(new TextMessage("match_found:" + match.toJson()));
-			} else {
-				System.out.println("Jogador 2 não tem sessão ativa");
-			}
-
-		} catch (IOException e) {
-			System.err.println("Erro ao notificar jogadores sobre a partida: " + e.getMessage());
-		}
-	}
-
 	public void removePlayerFromQueue(UUID playerId) {
 		WebSocketSession removed = waitingPlayers.remove(playerId);
 		System.out.println(
 				"Removido jogador " + playerId + " da fila de espera. Total de jogadores: " + waitingPlayers.size());
 		if (removed == null) {
 			System.out.println("Aviso: Tentativa de remover jogador não presente na fila.");
+		}
+	}
+
+	private void handleMessage(String message, WebSocketSession session) {
+		try {
+			session.sendMessage(new TextMessage(message));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
