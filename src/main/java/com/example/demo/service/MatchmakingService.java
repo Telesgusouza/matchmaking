@@ -36,13 +36,21 @@ public class MatchmakingService {
 	private MatchRepository matchRepository;
 
 	private ObjectMapper mapper = new ObjectMapper();
+	
+	// talvez saia
+	public Map<UUID, WebSocketSession> getWaitingPlayers() {
+	    return waitingPlayers;
+	}
+	
 
 	public void addPlayerToQueue(UUID playerId, WebSocketSession session) {
 		waitingPlayers.put(playerId, session);
 		checkForMatch();
 	}
+	
+	
 
-	private void checkForMatch() {
+	public void checkForMatch() {
 		if (waitingPlayers.size() >= 2) {
 			UUID playerOneId = waitingPlayers.keySet().iterator().next();
 			UUID playerTwoId = waitingPlayers.keySet().stream().skip(1).findFirst().orElse(null);
@@ -94,6 +102,7 @@ public class MatchmakingService {
 
 				} catch (Exception e) {
 					// TODO: handle exception
+					System.out.println("Erro inesperado ao criar um novo match: " + e.getMessage());
 					System.out.println("surgiu um erro inesperado");
 				}
 
@@ -125,6 +134,12 @@ public class MatchmakingService {
 
 	public void removePlayersFromQueue(UUID... playerIds) {
 		for (UUID playerId : playerIds) {
+
+			Optional<User> userOptional = this.userRepository.findById(playerId);
+			User user = userOptional.orElseThrow();
+
+			user.setRole(UserRole.OUT_OF_START);
+			this.userRepository.save(user);
 
 			waitingPlayers.remove(playerId);
 		}

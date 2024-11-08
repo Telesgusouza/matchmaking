@@ -33,7 +33,6 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
 		super.afterConnectionEstablished(session);
 		System.out.println("[afterConnectionEstablished] session id " + session.getId());
-
 		UUID userId = getUserIdFromSession(session);
 
 		if (userId == null) {
