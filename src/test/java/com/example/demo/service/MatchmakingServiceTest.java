@@ -10,11 +10,25 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import com.example.demo.entity.User;
 import com.example.demo.enums.UserRole;
 import com.example.demo.repository.UserRepository;
 
+@SpringBootTest(properties = {
+
+		"AWS_ACESSKEY=aws_acesskey", "AWS_BUCKET=aws_bucket", "AWS_SECRET=aws_secret",
+
+		"JWT_SECRET=my-secret-key-for-tests",
+
+		"aws.acesskey=${AWS_ACESSKEY}", "aws.secrety=${AWS_SECRET}", "aws.bucket=${AWS_BUCKET}",
+
+		"api.security.token.secret=${JWT_SECRET:my-secret-key}",
+
+})
+@AutoConfigureMockMvc
 @ExtendWith(MockitoExtension.class)
 class MatchmakingServiceTest {
 

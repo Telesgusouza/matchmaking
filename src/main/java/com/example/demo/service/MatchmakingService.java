@@ -36,19 +36,16 @@ public class MatchmakingService {
 	private MatchRepository matchRepository;
 
 	private ObjectMapper mapper = new ObjectMapper();
-	
+
 	// talvez saia
 	public Map<UUID, WebSocketSession> getWaitingPlayers() {
-	    return waitingPlayers;
+		return waitingPlayers;
 	}
-	
 
 	public void addPlayerToQueue(UUID playerId, WebSocketSession session) {
 		waitingPlayers.put(playerId, session);
 		checkForMatch();
 	}
-	
-	
 
 	public void checkForMatch() {
 		if (waitingPlayers.size() >= 2) {
