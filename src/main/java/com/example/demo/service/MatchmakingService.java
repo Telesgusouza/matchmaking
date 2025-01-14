@@ -15,6 +15,7 @@ import org.springframework.web.socket.WebSocketSession;
 import com.example.demo.dtos.RequestPhotoS3AwsDTO;
 import com.example.demo.entity.Match;
 import com.example.demo.entity.User;
+import com.example.demo.enums.Player;
 import com.example.demo.enums.UserRole;
 import com.example.demo.repository.MatchRepository;
 import com.example.demo.repository.UserRepository;
@@ -52,6 +53,8 @@ public class MatchmakingService {
 			UUID playerOneId = waitingPlayers.keySet().iterator().next();
 			UUID playerTwoId = waitingPlayers.keySet().stream().skip(1).findFirst().orElse(null);
 
+			handleRolePlayer(playerOneId, playerTwoId);
+
 			if (playerTwoId != null) {
 
 				try {
@@ -71,6 +74,12 @@ public class MatchmakingService {
 							photoPlayerOne.photo(), photoPlayerTwo.photo(),
 
 							0, 0, 0, 0);
+					
+					System.out.println();
+					
+					System.out.println("CHEGO AQUI");
+					
+					System.out.println();
 
 					updateStatusUsers(playerOneId, playerTwoId);
 
@@ -117,6 +126,20 @@ public class MatchmakingService {
 		return null;
 	}
 
+	public void handleRolePlayer(UUID idOne, UUID idTwo) {
+		Optional<User> optionalPlayerOne = this.userRepository.findById(idOne);
+		Optional<User> optionalPlayerTwo = this.userRepository.findById(idTwo);
+
+		User playerOne = optionalPlayerOne.orElseThrow(() -> new RuntimeException("User not found"));
+		User playerTwo = optionalPlayerTwo.orElseThrow(() -> new RuntimeException("User not found"));
+
+		playerOne.setPlayer(Player.PLAYER_ONE);
+		playerTwo.setPlayer(Player.PLAYER_TWO);
+
+		this.userRepository.save(playerOne);
+		this.userRepository.save(playerTwo);
+	}
+
 	private void updateStatusUsers(UUID... playerIds) {
 		for (UUID playerId : playerIds) {
 			Optional<User> userOptional = this.userRepository.findById(playerId);
@@ -124,9 +147,7 @@ public class MatchmakingService {
 
 			user.setRole(UserRole.ON_DEPARTURE);
 			this.userRepository.save(user);
-
 		}
-
 	}
 
 	public void removePlayersFromQueue(UUID... playerIds) {

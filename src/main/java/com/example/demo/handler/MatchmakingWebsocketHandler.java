@@ -29,6 +29,8 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 	@Autowired
 	private UserService useService;
 
+	long timestampOld;
+
 	@Override
 	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
 		super.afterConnectionEstablished(session);
@@ -54,21 +56,42 @@ public class MatchmakingWebsocketHandler extends TextWebSocketHandler {
 
 		String payload = (String) message.getPayload();
 
-		if ("pong".equals(payload)) {
-			ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+		if (payload.startsWith("pong")) {
 
-			Runnable task = () -> {
+			String[] parts = payload.split(":");
+
+			if (parts.length == 2) {
 				try {
-					messageWebsockets("ping", session);
-				} catch (Exception e) {
-					throw new RuntimeException("Erro ao enviar mensagem > ", e);
+					long clienteCurrentTime = Long.parseLong(parts[1]);
+					long currentTime = System.currentTimeMillis();
+
+					// Cálculo simples da latência
+					long latency = currentTime - clienteCurrentTime;
+
+					System.out.println("Latência calculada: " + latency + "ms");
+
+					// Agende o próximo ping
+					ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+					executorService.schedule(() -> {
+						try {
+							messageWebsockets("ping", session);
+							messageWebsockets("pong:" + latency, session);
+						} catch (Exception e) {
+							throw new RuntimeException("Erro ao enviar mensagem > ", e);
+						}
+					}, 4000, TimeUnit.MILLISECONDS); // 4 segundos
+					executorService.shutdown();
+				} catch (NumberFormatException e) {
+					System.err.println("Erro ao parsear o timestamp: " + e.getMessage());
 				}
-			};
+			}
+		} else if ("Get out of the waiting line".equals(payload)) {
 
-			executorService.schedule(task, 4, TimeUnit.SECONDS);
+			UUID idUser = getUserIdFromSession(session);
 
-			executorService.shutdown();
+			matchmakingService.removePlayersFromQueue(idUser);
 
+			session.close();
 		}
 
 	}
