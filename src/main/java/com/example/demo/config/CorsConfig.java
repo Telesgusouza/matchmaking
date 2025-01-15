@@ -7,18 +7,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
-	@Override
-	public void addCorsMappings(CorsRegistry registry) {
-		registry
-			.addMapping("/**")
-			
-			.allowedMethods("*")
-            .allowedHeaders("*")
-			.allowedOrigins("*")
-			
-			.allowedOriginPatterns("*")
-			
-			.allowCredentials(true);
-	}
-
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins("https://nimble-swan-c8809e.netlify.app", "http://localhost:5173")
+                .allowedMethods("*")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
 }
